@@ -18,3 +18,10 @@ export type AppStackParamList = {
     NotificationDetail: { notification: any };
     ClassDetails: { classId: string };
 };
+
+export type AppTabParamList = {
+    Home: undefined;
+    Timetable: undefined;
+    Attendance: undefined;
+    Profile: undefined;
+};

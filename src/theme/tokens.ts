@@ -34,6 +34,19 @@ export const colors = {
         default: '#E0E0E0',
         focused: '#5A53D6',
     },
+    // Premium theme additions
+    premium: {
+        background: '#FFFFFF',
+        border: '#E0E0E0',
+        textTitle: '#B4922B',
+        badge: 'gold',
+        badgeText: '#FFF',
+        card: '#FFF'
+    },
+    today: {
+        background: '#FFF8E1',
+        border: '#FFE082',
+    }
 } as const;
 
 export const spacing = {
@@ -75,6 +88,14 @@ export const shadows = {
 } as const;
 
 export const typography = {
+    fontFamily: {
+        primary: {
+            regular: 'Inter-Regular',
+            medium: 'Inter-Medium',
+            semibold: 'Inter-SemiBold',
+            bold: 'Inter-Bold',
+        }
+    },
     weight: {
         regular: '400',
         medium: '500',
