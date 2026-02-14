@@ -21,7 +21,9 @@ export const useHomework = () => {
         staleTime: 5 * 60 * 1000,
     });
 
+    // --- Mutation: Create homework (optimistic) ---
     const createMutation = useMutation({
+        mutationKey: ['homework', 'create'],
         mutationFn: async (payload: {
             classId: string;
             subjectId: string;
@@ -34,16 +36,46 @@ export const useHomework = () => {
             });
             return response.data;
         },
-        onSuccess: () => {
+        onMutate: async (payload) => {
+            await queryClient.cancelQueries({ queryKey: ['homework'] });
+            const previous = queryClient.getQueryData(['homework']);
+            const temp = {
+                id: `temp-${Date.now()}`,
+                ...payload,
+                createdAt: new Date().toISOString(),
+            };
+            queryClient.setQueryData(['homework'], (old: any) => [
+                ...(Array.isArray(old) ? old : []),
+                temp,
+            ]);
+            return { previous };
+        },
+        onError: (_err, _data, context) => {
+            queryClient.setQueryData(['homework'], context?.previous);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['homework'] });
         },
     });
 
+    // --- Mutation: Delete homework (optimistic) ---
     const deleteMutation = useMutation({
+        mutationKey: ['homework', 'delete'],
         mutationFn: async (id: string) => {
             await homeworkApi.deleteHomework({ id: Number(id) });
         },
-        onSuccess: () => {
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ['homework'] });
+            const previous = queryClient.getQueryData(['homework']);
+            queryClient.setQueryData(['homework'], (old: any) =>
+                Array.isArray(old) ? old.filter((h: any) => h.id !== id && h.id !== Number(id)) : [],
+            );
+            return { previous };
+        },
+        onError: (_err, _id, context) => {
+            queryClient.setQueryData(['homework'], context?.previous);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['homework'] });
         },
     });

@@ -57,12 +57,13 @@ export const useClassAttendanceStats = (classId?: string, startDate?: string, en
 };
 
 /**
- * Mutation: Submit bulk attendance
+ * Mutation: Submit bulk attendance (optimistic)
  */
 export const useMarkAttendance = () => {
     const queryClient = useQueryClient();
 
     const mutation = useMutation({
+        mutationKey: ['attendance', 'mark'],
         mutationFn: async (payload: {
             classId: string;
             date: string;
@@ -80,7 +81,31 @@ export const useMarkAttendance = () => {
             });
             return response.data;
         },
-        onSuccess: () => {
+        onMutate: async (payload) => {
+            // Optimistic: update the attendance sheet in cache
+            const sheetKey = ['attendance', 'class', payload.classId, payload.date];
+            await queryClient.cancelQueries({ queryKey: sheetKey });
+            const previousSheet = queryClient.getQueryData(sheetKey);
+            // Mark students as having the new status in cache
+            queryClient.setQueryData(sheetKey, (old: any) => {
+                if (!old) return old;
+                const statusMap = new Map(payload.records.map(r => [r.studentId, r.status]));
+                if (Array.isArray(old)) {
+                    return old.map((entry: any) => {
+                        const newStatus = statusMap.get(String(entry.studentId));
+                        return newStatus ? { ...entry, status: newStatus } : entry;
+                    });
+                }
+                return old;
+            });
+            return { previousSheet, sheetKey };
+        },
+        onError: (_err, _payload, context) => {
+            if (context?.previousSheet) {
+                queryClient.setQueryData(context.sheetKey, context.previousSheet);
+            }
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['attendance'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         },
