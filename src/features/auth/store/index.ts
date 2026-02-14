@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from '../../../api/instances';
+import type { User } from '../types';
 
 interface AuthState {
-    user: any | null;
+    user: User | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     error: string | null;
@@ -39,12 +40,17 @@ export const useAuthStore = create<AuthState>((set) => ({
             const data = response.data.data;
 
             if (data && data.accessToken) {
-                const user = data.user;
+                const apiUser = data.user;
+                const mappedUser: User = {
+                    id: apiUser?.userId || '',
+                    name: `${apiUser?.firstName || ''} ${apiUser?.lastName || ''}`.trim(),
+                    mobile: apiUser?.mobileNumber || mobile,
+                    email: apiUser?.email || undefined,
+                    role: (apiUser?.role as string)?.includes('ADMIN') ? 'admin' : 'teacher',
+                };
                 await AsyncStorage.setItem('authToken', data.accessToken);
-                if (user) {
-                    await AsyncStorage.setItem('user', JSON.stringify(user));
-                }
-                set({ user, isAuthenticated: true });
+                await AsyncStorage.setItem('user', JSON.stringify(mappedUser));
+                set({ user: mappedUser, isAuthenticated: true });
             } else {
                 throw new Error('Invalid response from server');
             }
