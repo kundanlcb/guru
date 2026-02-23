@@ -1,59 +1,29 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { AppText } from '../../../components/ui/AppText';
 import { Icon } from '../../../components/ui/Icon';
 import { theme } from '../../../theme/tokens';
+import { useTimetableStore } from '../store/timetableStore';
 
-const DAYS = [
-    { day: 'Mon', date: '18' },
-    { day: 'Tue', date: '19' },
-    { day: 'Wed', date: '20' },
-    { day: 'Thu', date: '21' },
-    { day: 'Fri', date: '22' },
-    { day: 'Sat', date: '23' },
-];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const CATEGORY_COLORS = {
     science: { bg: '#E0F2FE', text: '#0C4A6E', primary: '#5A53D6', iconBg: '#5A53D6' },
     math: { bg: '#FFEDD5', text: '#7C2D12', primary: '#5A53D6', iconBg: '#5A53D6' },
     arts: { bg: '#F3E8FF', text: '#581C87', primary: '#5A53D6', iconBg: '#5A53D6' },
     lang: { bg: '#E0E7FF', text: '#312E81', primary: '#5A53D6', iconBg: '#5A53D6' },
-    bio: { bg: '#86EFAC', text: '#064E3B', primary: '#16A34A', iconBg: '#15803D' },
+    bio: { bg: '#E2FBE9', text: '#064E3B', primary: '#16A34A', iconBg: '#15803D' },
     break: { bg: '#F5F5F5', text: '#525252', primary: '#737373', iconBg: '#737373' },
 };
 
-export const TIMETABLE_DATA: Record<string, Array<{ startTime: string; endTime: string; subject: string; class: string; room: string; category: string; isActive?: boolean }>> = {
-    '18': [
-        { startTime: '09:00', endTime: '10:00', subject: 'Mathematics', class: '10-A', room: 'Room 101', category: 'math', isActive: true },
-        { startTime: '10:30', endTime: '11:30', subject: 'Physics', class: '9-B', room: 'Lab 2', category: 'science' },
-        { startTime: '13:00', endTime: '14:00', subject: 'Mathematics', class: '11-C', room: 'Room 104', category: 'math' },
-    ],
-    '19': [
-        { startTime: '09:00', endTime: '10:00', subject: 'Physics', class: '9-B', room: 'Lab 2', category: 'science' },
-        { startTime: '11:00', endTime: '12:00', subject: 'Mathematics', class: '10-A', room: 'Room 101', category: 'math' },
-    ],
-    '20': [
-        { startTime: '09:00', endTime: '10:00', subject: 'Mathematics', class: '10-A', room: 'Room 101', category: 'math' },
-        { startTime: '10:30', endTime: '11:30', subject: 'Physics', class: '9-B', room: 'Lab 2', category: 'science' },
-        { startTime: '13:00', endTime: '14:00', subject: 'Mathematics', class: '11-C', room: 'Room 104', category: 'math' },
-    ],
-    '21': [
-        { startTime: '09:00', endTime: '10:00', subject: 'Physics', class: '9-B', room: 'Lab 2', category: 'science' },
-        { startTime: '11:00', endTime: '12:00', subject: 'Mathematics', class: '10-A', room: 'Room 101', category: 'math' },
-    ],
-    '22': [
-        { startTime: '09:00', endTime: '10:00', subject: 'Mathematics', class: '10-A', room: 'Room 101', category: 'math' },
-        { startTime: '10:30', endTime: '11:30', subject: 'Physics', class: '9-B', room: 'Lab 2', category: 'science' },
-        { startTime: '13:00', endTime: '14:00', subject: 'Mathematics', class: '11-C', room: 'Room 104', category: 'math' },
-    ],
-    '23': [
-        { startTime: '09:00', endTime: '10:00', subject: 'Sports', class: 'Activity', room: 'Ground', category: 'bio' },
-    ],
-};
-
 export const TimetableScreen = () => {
-    const [selectedDate, setSelectedDate] = useState('18');
+    const { schedule, isLoading, fetchSchedule } = useTimetableStore();
+    const [selectedDay, setSelectedDay] = useState('Mon');
+
+    React.useEffect(() => {
+        fetchSchedule();
+    }, []);
 
     const getSubjectIcon = (subject: string): string => {
         const lowerSubject = subject.toLowerCase();
@@ -77,31 +47,23 @@ export const TimetableScreen = () => {
             headerNoBorder
         >
             <View style={styles.container}>
-                {/* Date Strip */}
+                {/* Day Strip */}
                 <View style={styles.dateStripContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateScroll}>
-                        {DAYS.map((item) => {
-                            const isSelected = selectedDate === item.date;
+                        {DAYS.map((day) => {
+                            const isSelected = selectedDay === day;
                             return (
                                 <TouchableOpacity
-                                    key={item.date}
+                                    key={day}
                                     style={[styles.dateItem, isSelected && styles.dateItemActive]}
-                                    onPress={() => setSelectedDate(item.date)}
+                                    onPress={() => setSelectedDay(day)}
                                 >
-                                    <AppText
-                                        size="xs"
-                                        weight={isSelected ? 'bold' : 'regular'}
-                                        color={isSelected ? '#FFF' : theme.colors.text.secondary}
-                                        style={{ marginBottom: 4 }}
-                                    >
-                                        {item.day}
-                                    </AppText>
                                     <AppText
                                         size="m"
                                         weight="bold"
                                         color={isSelected ? '#FFF' : theme.colors.text.primary}
                                     >
-                                        {item.date}
+                                        {day}
                                     </AppText>
                                 </TouchableOpacity>
                             );
@@ -110,8 +72,13 @@ export const TimetableScreen = () => {
                 </View>
 
                 {/* Timeline */}
-                <ScrollView contentContainerStyle={styles.timelineContent}>
-                    {TIMETABLE_DATA[selectedDate]?.map((item, index, arr) => {
+                <ScrollView
+                    contentContainerStyle={styles.timelineContent}
+                    refreshControl={
+                        <RefreshControl refreshing={isLoading} onRefresh={fetchSchedule} tintColor={theme.colors.primary[600]} />
+                    }
+                >
+                    {schedule[selectedDay]?.map((item, index, arr) => {
                         const colors = CATEGORY_COLORS[item.category as keyof typeof CATEGORY_COLORS] || CATEGORY_COLORS.break;
                         const isActive = item.isActive;
                         const isLast = index === arr.length - 1;
@@ -205,7 +172,7 @@ export const TimetableScreen = () => {
                             </View>
                         );
                     })}
-                    {(!TIMETABLE_DATA[selectedDate] || TIMETABLE_DATA[selectedDate].length === 0) && (
+                    {(!schedule[selectedDay] || schedule[selectedDay].length === 0) && !isLoading && (
                         <View style={styles.emptyState}>
                             <AppText color={theme.colors.text.secondary}>No schedule for this day</AppText>
                         </View>
@@ -230,8 +197,8 @@ const styles = StyleSheet.create({
     dateItem: {
         alignItems: 'center',
         justifyContent: 'center',
-        width: 56,
-        height: 72,
+        width: 64,
+        height: 48,
         borderRadius: 14,
         backgroundColor: 'transparent',
     },
@@ -254,12 +221,12 @@ const styles = StyleSheet.create({
     },
     timeColumn: {
         width: 60,
-        justifyContent: 'center', // Center vertically
+        justifyContent: 'center',
     },
     timelineDecoration: {
         width: 24,
         alignItems: 'center',
-        justifyContent: 'center', // Center vertically
+        justifyContent: 'center',
         marginRight: theme.spacing.s,
         position: 'relative',
     },
@@ -274,7 +241,7 @@ const styles = StyleSheet.create({
     timelineLineBottom: {
         position: 'absolute',
         top: '50%',
-        bottom: -theme.spacing.l, // Extend to cover margin
+        bottom: -theme.spacing.l,
         width: 2,
         backgroundColor: theme.colors.border.soft,
         left: 11,
@@ -284,7 +251,7 @@ const styles = StyleSheet.create({
         height: 12,
         borderRadius: 6,
         borderWidth: 2,
-        zIndex: 1, // Center by flexbox, no margin needed
+        zIndex: 1,
     },
     cardContainer: {
         flex: 1,
@@ -296,13 +263,15 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: theme.spacing.l,
         justifyContent: 'center',
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: theme.colors.border.soft,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: theme.spacing.m,
-        height: 28,
     },
     headerRight: {
         flexDirection: 'row',
@@ -323,13 +292,13 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#000',
-        opacity: 0.2,
+        backgroundColor: theme.colors.primary[600],
+        marginRight: 4,
     },
     iconPlaceholder: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         marginRight: 8,
         alignItems: 'center',
         justifyContent: 'center',

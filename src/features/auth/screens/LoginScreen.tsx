@@ -10,27 +10,28 @@ import Feather from 'react-native-vector-icons/Feather';
 
 export const LoginScreen = () => {
     const navigation = useNavigation<any>();
-    const [mobile, setMobile] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [validationError, setValidationError] = useState('');
-    const [isFocused, setIsFocused] = useState(false);
+    const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
 
-    const { requestOtp, isLoading } = useAuthStore();
-    const isValidMobile = mobile.length === 10;
+    const { login, isLoading } = useAuthStore();
 
-    const handleSendOtp = async () => {
-        if (!isValidMobile) {
-            if (mobile.length > 0) {
-                setValidationError('Please enter a valid 10-digit mobile number');
-            }
+    const handleLogin = async () => {
+        if (!email || !password) {
+            setValidationError('Please enter both email and password');
             return;
         }
         setValidationError('');
 
         try {
-            await requestOtp(mobile);
-            navigation.navigate('OtpVerify', { phoneNumber: mobile });
+            await login(email, password);
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+            });
         } catch (e: any) {
-            Alert.alert('Error', e.message || 'Failed to send OTP');
+            Alert.alert('Error', e.message || 'Login failed');
         }
     };
 
@@ -45,40 +46,68 @@ export const LoginScreen = () => {
                         Welcome to Guru
                     </AppText>
                     <AppText size="m" color={theme.colors.text.secondary} align="center" style={styles.subtitle}>
-                        Enter your registered mobile number to continue
+                        Sign in to your teacher account
                     </AppText>
                 </View>
 
                 <View style={styles.form}>
+                    {/* Email Input */}
                     <View style={[
                         styles.inputContainer,
-                        isFocused && styles.inputFocused,
-                        !!validationError && styles.inputError
+                        focusedField === 'email' && styles.inputFocused,
+                        !!validationError && !email && styles.inputError
                     ]}>
                         <View style={styles.iconContainer}>
                             <Feather
-                                name="smartphone"
+                                name="mail"
                                 size={20}
-                                color={isFocused ? theme.colors.primary[600] : theme.colors.text.tertiary}
+                                color={focusedField === 'email' ? theme.colors.primary[600] : theme.colors.text.tertiary}
                             />
                         </View>
-                        <AppText weight="medium" color={theme.colors.text.primary} style={styles.prefix}>+91</AppText>
-                        <View style={styles.verticalDivider} />
                         <TextInput
                             style={styles.input}
-                            placeholder="Mobile Number"
+                            placeholder="Email Address"
                             placeholderTextColor={theme.colors.text.tertiary}
-                            keyboardType="number-pad"
-                            maxLength={10}
-                            value={mobile}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            value={email}
                             onChangeText={(text) => {
-                                setMobile(text);
+                                setEmail(text);
                                 if (validationError) setValidationError('');
                             }}
-                            onFocus={() => setIsFocused(true)}
-                            onBlur={() => setIsFocused(false)}
+                            onFocus={() => setFocusedField('email')}
+                            onBlur={() => setFocusedField(null)}
                         />
                     </View>
+
+                    {/* Password Input */}
+                    <View style={[
+                        styles.inputContainer,
+                        focusedField === 'password' && styles.inputFocused,
+                        !!validationError && !password && styles.inputError
+                    ]}>
+                        <View style={styles.iconContainer}>
+                            <Feather
+                                name="lock"
+                                size={20}
+                                color={focusedField === 'password' ? theme.colors.primary[600] : theme.colors.text.tertiary}
+                            />
+                        </View>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Password"
+                            placeholderTextColor={theme.colors.text.tertiary}
+                            secureTextEntry
+                            value={password}
+                            onChangeText={(text) => {
+                                setPassword(text);
+                                if (validationError) setValidationError('');
+                            }}
+                            onFocus={() => setFocusedField('password')}
+                            onBlur={() => setFocusedField(null)}
+                        />
+                    </View>
+
                     {validationError ? (
                         <AppText size="xs" color={theme.colors.status.danger} style={styles.errorText}>
                             {validationError}
@@ -86,15 +115,12 @@ export const LoginScreen = () => {
                     ) : null}
 
                     <AppButton
-                        title="Get OTP"
-                        onPress={handleSendOtp}
+                        title="Sign In"
+                        onPress={handleLogin}
                         isLoading={isLoading}
                         variant="primary"
                         disabled={isLoading}
-                        style={[
-                            styles.button,
-                            !isValidMobile && styles.buttonVisualDisabled
-                        ]}
+                        style={styles.button}
                     />
                 </View>
             </View>

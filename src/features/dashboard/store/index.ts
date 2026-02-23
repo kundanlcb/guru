@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import { profileApi } from '../../../api/instances';
 
 export interface ClassSession {
     id: string;
-    className: string; // e.g., "10-A"
-    subject: string;   // e.g., "Mathematics"
-    time: string;      // e.g., "09:00 AM - 10:00 AM"
-    room: string;      // e.g., "Room 101"
+    className: string;
+    subject: string;
+    time: string;
+    room: string;
     status: 'upcoming' | 'ongoing' | 'completed';
 }
 
@@ -20,25 +21,84 @@ export interface PendingTask {
 interface DashboardState {
     todayClasses: ClassSession[];
     pendingTasks: PendingTask[];
+    summaries: {
+        attendance?: any;
+        homework?: any;
+        exam?: any;
+    };
     isLoading: boolean;
     refreshDashboard: () => Promise<void>;
 }
 
 export const useDashboardStore = create<DashboardState>((set) => ({
-    todayClasses: [
-        { id: '1', className: '10-A', subject: 'Mathematics', time: '09:00 - 10:00', room: 'Room 101', status: 'completed' },
-        { id: '2', className: '9-B', subject: 'Physics', time: '10:30 - 11:30', room: 'Lab 2', status: 'ongoing' },
-        { id: '3', className: '11-C', subject: 'Math', time: '13:00 - 14:00', room: 'Room 104', status: 'upcoming' },
-    ],
-    pendingTasks: [
-        { id: '1', title: 'Mark Attendance', subtitle: 'Class 9-B • Physics', type: 'attendance' },
-        { id: '2', title: 'Check Homework', subtitle: 'Class 10-A • Algebra Assignment', type: 'homework', dueDate: 'Today' },
-        { id: '3', title: 'Enter Marks', subtitle: 'Class 11-C • Mid-Term', type: 'marks' },
-    ],
+    todayClasses: [],
+    pendingTasks: [],
+    summaries: {},
     isLoading: false,
     refreshDashboard: async () => {
         set({ isLoading: true });
-        // Simulate API fetch
-        setTimeout(() => set({ isLoading: false }), 1000);
+        try {
+            const [timetableRes, dashboardRes] = await Promise.all([
+                profileApi.getTimetable(),
+                profileApi.getDashboard()
+            ]);
+
+            const timetableData = timetableRes.data.data;
+            const dashboardData = dashboardRes.data.data;
+
+            // 1. Process Timetable
+            if (timetableData && timetableData.weeklySchedule) {
+                const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+                const today = days[new Date().getDay()];
+                const todayPeriods = timetableData.weeklySchedule[today as keyof typeof timetableData.weeklySchedule] || [];
+
+                const mappedClasses: ClassSession[] = todayPeriods.map((p, index) => ({
+                    id: `${today}-${index}`,
+                    className: p.className || '',
+                    subject: p.subjectName || '',
+                    time: `${p.startTime} - ${p.endTime}`,
+                    room: p.roomNumber || 'Room TBD',
+                    status: index === 0 ? 'completed' : index === 1 ? 'ongoing' : 'upcoming'
+                }));
+                set({ todayClasses: mappedClasses });
+            }
+
+            // 2. Process Dashboard Summary & Derive Tasks
+            if (dashboardData) {
+                const tasks: PendingTask[] = [];
+
+                if (dashboardData.attendanceSummary) {
+                    tasks.push({
+                        id: 'task-att',
+                        title: 'Mark Attendance',
+                        subtitle: `Last marked: ${dashboardData.attendanceSummary.lastMarkedDate || 'Never'}`,
+                        type: 'attendance'
+                    });
+                }
+
+                if (dashboardData.homeworkSummary && (dashboardData.homeworkSummary.pendingCount ?? 0) > 0) {
+                    tasks.push({
+                        id: 'task-hw',
+                        title: 'Check Homework',
+                        subtitle: `${dashboardData.homeworkSummary.pendingCount} pending submissions`,
+                        type: 'homework',
+                        dueDate: 'Soon'
+                    });
+                }
+
+                set({
+                    summaries: {
+                        attendance: dashboardData.attendanceSummary,
+                        homework: dashboardData.homeworkSummary,
+                        exam: dashboardData.nextExam
+                    },
+                    pendingTasks: tasks
+                });
+            }
+        } catch (error) {
+            console.error('Refresh dashboard error:', error);
+        } finally {
+            set({ isLoading: false });
+        }
     },
 }));

@@ -207,6 +207,13 @@ export const HomeScreen = () => {
                             () => navigation.navigate('Timetable'),
                             'Weekly Schedule'
                         )}
+                        {renderQuickAction(
+                            'Leaves',
+                            'briefcase',
+                            theme.colors.status.danger,
+                            () => navigation.navigate('LeaveDashboard'),
+                            'Apply & Track'
+                        )}
                     </View>
                 </View>
 

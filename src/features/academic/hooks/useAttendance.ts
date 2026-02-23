@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { attendanceApi } from '../../../api/instances';
+import { apiClient } from '../../../services/api/client';
 
 /**
  * Fetch attendance sheet for a specific class on a date
@@ -13,11 +14,8 @@ export const useClassAttendance = (classId?: string, date?: string) => {
     const { data, isLoading, error, refetch } = useQuery({
         queryKey: ['attendance', 'class', classId, date],
         queryFn: async () => {
-            const response = await attendanceApi.getClassAttendanceSheet({
-                classId: Number(classId!),
-                date: date!,
-            });
-            return response.data;
+            const response = await apiClient.get(`/api/attendance/sheet/${classId}`, { params: { date } });
+            return response.data?.data || response.data;
         },
         enabled: !!classId && !!date,
         staleTime: 1 * 60 * 1000,
@@ -38,12 +36,10 @@ export const useClassAttendanceStats = (classId?: string, startDate?: string, en
     const { data, isLoading, error } = useQuery({
         queryKey: ['attendance', 'stats', classId, startDate, endDate],
         queryFn: async () => {
-            const response = await attendanceApi.getClassAttendanceStatistics({
-                classId: Number(classId!),
-                startDate: startDate!,
-                endDate: endDate!,
+            const response = await apiClient.get(`/api/attendance/class/${classId}/statistics`, {
+                params: { startDate, endDate }
             });
-            return response.data;
+            return response.data?.data || response.data;
         },
         enabled: !!classId && !!startDate && !!endDate,
         staleTime: 5 * 60 * 1000,
@@ -69,17 +65,15 @@ export const useMarkAttendance = () => {
             date: string;
             records: Array<{ studentId: string; status: string }>;
         }) => {
-            const response = await attendanceApi.markBulkAttendance({
-                bulkMarkAttendanceRequest: {
-                    classId: Number(payload.classId),
-                    date: payload.date,
-                    attendances: payload.records.map(r => ({
-                        studentId: Number(r.studentId),
-                        status: r.status as any,
-                    })),
-                },
+            const response = await apiClient.post('/api/attendance/bulk', {
+                classId: Number(payload.classId),
+                date: payload.date,
+                attendances: payload.records.map(r => ({
+                    studentId: Number(r.studentId),
+                    status: r.status,
+                })),
             });
-            return response.data;
+            return response.data?.data || response.data;
         },
         onMutate: async (payload) => {
             // Optimistic: update the attendance sheet in cache

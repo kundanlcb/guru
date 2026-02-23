@@ -34,7 +34,7 @@ export function useNetworkStatus(): NetworkStatus {
             let isSlowConnection = false;
             if (state.type === NetInfoStateType.cellular && state.details) {
                 const generation = (state.details as any).cellularGeneration;
-                if (generation === '2g' || generation === '3g') {
+                if (generation === '2g') {
                     isSlowConnection = true;
                 }
             }

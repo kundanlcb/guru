@@ -1,42 +1,52 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { AppText } from '../../../components/ui/AppText';
 import { theme } from '../../../theme/tokens';
 import { Icon } from '../../../components/ui/Icon';
-import { AppButton } from '../../../components/ui/AppButton';
-
-// Mock Data
-const HOMEWORK_DATA = [
-    { id: '1', class: '10-A', subject: 'Mathematics', title: 'Algebra Exercises', dueDate: '15 Feb', status: 'pending', submissions: 12, total: 40 },
-    { id: '2', class: '9-B', subject: 'Physics', title: 'Chapter 3: Motion', dueDate: '16 Feb', status: 'checked', submissions: 38, total: 38 },
-    { id: '3', class: '11-C', subject: 'Math', title: 'Trigonometry', dueDate: '18 Feb', status: 'pending', submissions: 5, total: 35 },
-];
+import { useHomeworkStore } from '../store/homeworkStore';
 
 export const HomeworkScreen = () => {
-    // const navigation = useNavigation(); // Will use for Create/Detail
+    const navigation = useNavigation<any>();
+    const { homeworkItems, isLoading, fetchHomework } = useHomeworkStore();
     const [filter, setFilter] = useState<'pending' | 'checked'>('pending');
 
+    useEffect(() => {
+        fetchHomework();
+    }, []);
+
     const renderItem = ({ item }: { item: any }) => (
-        <TouchableOpacity style={styles.card} activeOpacity={0.8}>
+        <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.8}
+            onPress={() => {
+                // navigation.navigate('HomeworkDetail', { homeworkId: item.id });
+            }}
+        >
             <View style={styles.cardHeader}>
                 <View style={styles.subjectBadge}>
-                    <AppText size="xs" weight="bold" color={theme.colors.primary[600]}>{item.subject}</AppText>
+                    <AppText size="xs" weight="bold" color={theme.colors.primary[600]}>
+                        {item.subject?.name || 'Subject'}
+                    </AppText>
                 </View>
-                <AppText size="xs" color={theme.colors.text.tertiary}>{item.dueDate}</AppText>
+                <AppText size="xs" color={theme.colors.text.tertiary}>
+                    {item.dueDate ? new Date(item.dueDate).toLocaleDateString() : 'No Date'}
+                </AppText>
             </View>
 
             <AppText size="l" weight="bold" style={{ marginTop: 8 }}>{item.title}</AppText>
-            <AppText size="s" color={theme.colors.text.secondary} style={{ marginTop: 2 }}>{item.class} • {item.submissions}/{item.total} Submitted</AppText>
-
-            <View style={styles.progressContainer}>
-                <View style={[styles.progressBar, { width: `${(item.submissions / item.total) * 100}%` }]} />
-            </View>
+            <AppText size="s" color={theme.colors.text.secondary} style={{ marginTop: 2 }}>
+                {item.studentClass?.name || 'Class'}
+            </AppText>
 
             <View style={styles.cardFooter}>
-                <View style={[styles.statusCtx, { backgroundColor: item.status === 'checked' ? theme.colors.status.success + '15' : theme.colors.status.warning + '15' }]}>
-                    <AppText size="xs" weight="bold" color={item.status === 'checked' ? theme.colors.status.success : theme.colors.status.warning}>
-                        {item.status.toUpperCase()}
+                <View style={[
+                    styles.statusCtx,
+                    { backgroundColor: theme.colors.status.warning + '15' }
+                ]}>
+                    <AppText size="xs" weight="bold" color={theme.colors.status.warning}>
+                        PENDING
                     </AppText>
                 </View>
                 <Icon name="chevron-right" size={20} color={theme.colors.text.tertiary} library="feather" />
@@ -48,21 +58,35 @@ export const HomeworkScreen = () => {
         <ScreenWrapper title="Homework" showBack headerNoBorder headerAlign="left" headerSize="xxl">
             <View style={styles.filterContainer}>
                 <TouchableOpacity onPress={() => setFilter('pending')} style={[styles.filterChip, filter === 'pending' && styles.activeChip]}>
-                    <AppText weight="medium" color={filter === 'pending' ? '#FFF' : theme.colors.text.secondary}>Pending</AppText>
+                    <AppText weight="medium" color={filter === 'pending' ? '#FFF' : theme.colors.text.secondary}>Active</AppText>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setFilter('checked')} style={[styles.filterChip, filter === 'checked' && styles.activeChip]}>
-                    <AppText weight="medium" color={filter === 'checked' ? '#FFF' : theme.colors.text.secondary}>Checked</AppText>
+                    <AppText weight="medium" color={filter === 'checked' ? '#FFF' : theme.colors.text.secondary}>Past</AppText>
                 </TouchableOpacity>
             </View>
 
             <FlatList
-                data={HOMEWORK_DATA.filter(i => i.status === filter)}
+                data={homeworkItems}
                 renderItem={renderItem}
-                keyExtractor={item => item.id}
+                keyExtractor={item => item.id?.toString() || Math.random().toString()}
                 contentContainerStyle={styles.listContent}
+                refreshControl={
+                    <RefreshControl refreshing={isLoading} onRefresh={fetchHomework} tintColor={theme.colors.primary[600]} />
+                }
+                ListEmptyComponent={
+                    isLoading ? null : (
+                        <View style={{ padding: 40, alignItems: 'center' }}>
+                            <AppText color={theme.colors.text.secondary}>No homework found.</AppText>
+                        </View>
+                    )
+                }
             />
 
-            <TouchableOpacity style={styles.fab} activeOpacity={0.9}>
+            <TouchableOpacity
+                style={styles.fab}
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('CreateHomework')}
+            >
                 <Icon name="plus" size={24} color="#FFF" library="feather" />
             </TouchableOpacity>
         </ScreenWrapper>

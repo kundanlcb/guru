@@ -45,11 +45,12 @@ apiClient.interceptors.response.use(
         // Handle 401 Unauthorized - token expired
         if (error.response?.status === 401) {
             try {
-                await AsyncStorage.multiRemove(['authToken', 'user']);
-                // Navigate to login? With React Navigation, we might need a navigation ref service or event emitter
-                // For now, we rely on state management (zustand) to clear user and trigger re-render
+                await AsyncStorage.multiRemove(['authToken', 'refreshToken', 'user']);
+                // Note: We can't easily clear queryClient here without importing it
+                // and we should ideally trigger useAuthStore.getState().logout() but that might create circular dependency
+                // For now, clearing storage and relying on the app to detect unauthorized state
             } catch (e) {
-                console.error('Error clearing auth token', e);
+                console.error('401 Cleanup Error', e);
             }
         }
 
